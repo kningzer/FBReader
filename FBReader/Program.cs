@@ -94,7 +94,7 @@ namespace FBReader
                     Console.WriteLine("Ange en giltlig sökväg! Försök igen");
                 }
             }
-
+            //Informera
             Console.WriteLine("Sökning kommer utföras på: {0}", startfolder);
             Console.WriteLine("Programmet startar nu, vänta tills texten \"Färdig med uppgift\" visas.\n" +
                               "Konsollen uppdateras även om det inte är helt klart");
@@ -125,24 +125,26 @@ namespace FBReader
 
                 if (File.Exists(path))
                 {
-                    // This path is a file
+                    //KOntrollera filsökväg
                     ProcessFile(path);
                 }
                 else if (Directory.Exists(path))
                 {
-                    // This path is a directory
+                    //Kontrollera mapp
                     ProcessDirectory(path);
                 }
                 else
                 {
+                    //Om det siter sig, backa ur
                     Console.WriteLine("{0} är inte en korrekt sökväg eller mapp.", path);
                 }
 
+                //Kontrollera Twincat filer
                 foreach (string fpath in filer)
                 {
                     Program.ReadXML(fpath);
                 }
-
+                //Kontrollera tmc filer efter FB referenser
                 foreach (string s in tmc)
                 {
                     foreach (POU p in Fb)
@@ -156,27 +158,30 @@ namespace FBReader
                             p.uses++;
                     }
                 }
+                //Skall inviduella projekt skrivas ut
                 if (bShowIndividual)
                 {
                     printProjectData();
                 }
+                //Rensa variabler
                 filer.Clear();
                 tmc.Clear();
                 Fb.Clear();
                 funcs.Clear();
             }
-
+            //Skriv ut resultat om det önskas
             if (bShowAll)
             {
                 printAllData();
             }
-
+            //Kopiera filer om det önskas
             if (bCopy)
             {
                 copyAllData(startfolder);
             }
         }
 
+        //Visa sökruta
         public static string BrowseFolder()
         {
             FolderBrowserDialog fbd = new FolderBrowserDialog();
@@ -189,23 +194,23 @@ namespace FBReader
             return path;
         }
 
+        //Sök igenom Twincat filer
         public static void ReadXML(string path)
         {
+            //Ladda fil som xml
             XDocument doc = XDocument.Load(path);
             foreach (XElement el in doc.Root.Elements())
             {
-
-                //Console.WriteLine("{0}", el.Name);
+                //gå igenom delar
                 foreach (XElement elem in el.Elements())
                 {
-                    //Console.WriteLine("{0}  {1}", elem.Name, elem.Value);
-
+                 
+                    //KOntrollera om FB text förekommer
                     if (elem.Value.Contains("FUNCTION_BLOCK"))
                     {
-                        //Console.WriteLine("Denna var ett FB:{0}", el.Attribute("Name").Value);
 
                         bool found = false;
-
+                        //Kolla emot dubletter
                         foreach (POU p in Fb)
                         {
                             if (p.fbName == el.Attribute("Name").Value)
@@ -216,7 +221,7 @@ namespace FBReader
                             }
 
                         }
-
+                        //Lägg till om unik
                         if (!found)
                         {
                             POU newP = new POU();
@@ -227,7 +232,7 @@ namespace FBReader
                             allFb.Add(newP);
                         }
                     }
-
+                    //Utför samma för funktioner
                     if (elem.Value.Contains("FUNCTION "))
                     {
                            bool found = false;
@@ -260,16 +265,14 @@ namespace FBReader
             }
         }
 
+        //Läs Twincat tmc filer som xml format och leta efter FB referenser i dem.
         public static bool ReadTMC(string path, string POU)
         {
             XDocument doc = XDocument.Load(path);
             foreach (XElement el in doc.Root.Elements())
             {
-
-                //Console.WriteLine("{0}", el.Name);
                 foreach (XElement elem in el.Elements())
                 {
-                    //Console.WriteLine("{0}  {1}", elem.Name, elem.Value);
 
                     if (elem.Value.Contains(POU))
                     {
@@ -283,6 +286,7 @@ namespace FBReader
             return false;
         }
 
+        //Skriv data per projekt i konsollen
         public static void printProjectData()
         {
             Console.WriteLine(ConsoleWindowFullLine());
@@ -320,7 +324,7 @@ namespace FBReader
                 Console.WriteLine("{0,-35}{1,-35}{2,-10}", f.fbName, f.projName, use);
             }
         }
-
+        //Skriv ut summerad data i konsollen
         public static void printAllData()
         {
             Console.WriteLine(ConsoleWindowFullLine());
@@ -338,7 +342,7 @@ namespace FBReader
                 Console.WriteLine("{0,-35}{1,-35}", f.fbName, f.projName);
             }
         }
-
+        //Kopiera alla summerade filer till en egen mapp
         public static void copyAllData(string startfolder)
         {
             string newPath = startfolder + "\\FB-Funks-" + DateTime.Now.ToString("yyyyMMdd");
