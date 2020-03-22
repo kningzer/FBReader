@@ -13,6 +13,7 @@ namespace FBReader
 {
     class Program
     {
+        //Massa globala variabler föratt jag är laaaaaaaaaaaaat...
         static List<string> filer;
         static List<POU> Fb;
         static List<POU> funcs;
@@ -110,7 +111,7 @@ namespace FBReader
             Console.ReadKey();
         }
 
-
+        //"Huvudprogram" som hanterar utläsning, kontroll av referens och populering av globala variabler
         public static void runProgram(string startfolder)
         {
             string[] temp = Directory.GetDirectories(startfolder);
