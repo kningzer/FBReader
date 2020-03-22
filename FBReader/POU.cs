@@ -10,6 +10,7 @@ namespace FBReader
         public string fbName;
         public string projName;
         public int uses = 0;
+        public string fullpath;
 
     }
 }

@@ -4,6 +4,10 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Xml.Linq;
+using System.Windows.Forms;
+
+
+
 
 namespace FBReader
 {
@@ -17,28 +21,39 @@ namespace FBReader
         static List<string> projektmappar;
         static string proj;
         static List<String> tmc;
+        static bool bShowIndividual = false;
+        static bool bShowAll = false;
+        static bool bCopy = false;
 
-
+        [STAThread]
         static void Main(string[] args)
         {
-            bool bShowIndividual = false;
-            bool bShowAll = false;
-
+            //Variabababababler
             string startfolder = "";
-            Console.WriteLine("Ange mapp som skall genomsökas: (Om inget anges så söks \"C:\\Git\" igenom");
-            startfolder = Console.ReadLine();
+            bool pathOK = false;
+            filer = new List<string>();
+            Fb = new List<POU>();
+            funcs = new List<POU>();
+            projektmappar = new List<string>();
+            tmc = new List<string>();
+            allFb = new List<POU>();
+            allFuncs = new List<POU>();
 
-            if (startfolder == "")
-            {
-                startfolder = @"C:\git\";
-            }
+            //Fual sig lite
+            Console.WriteLine(ConsoleWindowFullLine());
+            Console.WriteLine("FB Detektiven");
+            Console.WriteLine(ConsoleWindowFullLine());
 
-            Console.WriteLine("{0} kommer att sökas igenom.\n", startfolder);
+            //Visa menyn
             Console.WriteLine("Hur ska sökningen utföras\n" +
-                              "1. Rapportera FB/Funk5 per projekt.\n" +
-                              "2. Rapportera totala antalet hittade.\n" +
-                              "3. Utför både 1 & 2\n");
-            int val = GetIntFromUser(1, 3);
+                              "1. Rapportera vilka FB\\Funktioner var projekt innehåller från angiven plats.\n" +
+                              "2. Rapportera totala antalet hittade FB\\Funktioner från angiven plats.\n" +
+                              "3. Utför både 1 & 2\n" +
+                              "4. Extrahera FB\\Funktioner och kopiera till separat mapp\n" +
+                              "5. Avsluta\n");
+
+            //Läs & hantera val från användaren
+            int val = GetIntFromUser(1, 5);
 
             if (val == 1)
             {
@@ -51,16 +66,53 @@ namespace FBReader
             {
                 bShowAll = true;
                 bShowIndividual = true;
+            }else if(val == 4)
+            {
+                bCopy = true;
+            }else if(val == 5)
+            {
+                Environment.Exit(1);
             }
 
-            filer = new List<string>();
-            Fb = new List<POU>();
-            funcs = new List<POU>();
-            projektmappar = new List<string>();
-            tmc = new List<string>();
-            allFb = new List<POU>();
-            allFuncs = new List<POU>();
+            while (!pathOK)
+            {
+                //Be om sökväg
+                Console.WriteLine("Ange mapp som skall genomsökas: (Tryck Enter för att öppna sökfönster)");
+                startfolder = Console.ReadLine();
+                //Öppna sökdialog om det behövs
+                if (startfolder == "")
+                {
+                    startfolder = BrowseFolder();
+                }
 
+                if (!(startfolder == "") && Directory.Exists(startfolder))
+                {
+                    pathOK = true;
+                }
+                else
+                {
+                    Console.WriteLine("Ange en giltlig sökväg! Försök igen");
+                }
+            }
+
+            Console.WriteLine("Sökning kommer utföras på: {0}", startfolder);
+            Console.WriteLine("Programmet startar nu, vänta tills texten \"Färdig med uppgift\" visas.\n" +
+                              "Konsollen uppdateras även om det inte är helt klart");
+
+
+            //Kör program
+            runProgram(startfolder);
+ 
+            Console.WriteLine(ConsoleWindowFullLine());
+            Console.WriteLine("Färdig med uppgift");
+            Console.WriteLine( ConsoleWindowFullLine());
+
+            Console.ReadKey();
+        }
+
+
+        public static void runProgram(string startfolder)
+        {
             string[] temp = Directory.GetDirectories(startfolder);
             foreach (string sf in temp)
             {
@@ -83,7 +135,7 @@ namespace FBReader
                 }
                 else
                 {
-                    Console.WriteLine("{0} is not a valid file or directory.", path);
+                    Console.WriteLine("{0} är inte en korrekt sökväg eller mapp.", path);
                 }
 
                 foreach (string fpath in filer)
@@ -104,21 +156,9 @@ namespace FBReader
                             p.uses++;
                     }
                 }
-                if (bShowIndividual) {
-                    Console.WriteLine(  ConsoleWindowFullLine());
-                    Console.WriteLine("Funktionsblock\t" + proj);
-                    Console.WriteLine(  ConsoleWindowFullLine());
-                    foreach (POU fb in Fb)
-                    {
-                        Console.WriteLine("{0,-35}{1,-35}{2,-1}", fb.fbName, fb.projName, fb.uses);
-                    }
-                    Console.WriteLine(  ConsoleWindowFullLine());
-                    Console.WriteLine("Funktioner\t" + proj);
-                    Console.WriteLine(  ConsoleWindowFullLine());
-                    foreach (POU f in funcs)
-                    {
-                        Console.WriteLine("{0,-35}{1,-35}{2,-1}", f.fbName, f.projName, f.uses);
-                    }
+                if (bShowIndividual)
+                {
+                    printProjectData();
                 }
                 filer.Clear();
                 tmc.Clear();
@@ -128,27 +168,25 @@ namespace FBReader
 
             if (bShowAll)
             {
-
-                Console.WriteLine(ConsoleWindowFullLine());
-                Console.WriteLine("Summering av FB/Funktioner i vald mapp");
-                Console.WriteLine(  ConsoleWindowFullLine());
-                foreach (POU fb in allFb)
-                {
-                    Console.WriteLine("{0,-35}{1,-35}", fb.fbName, fb.projName);
-                }
-                Console.WriteLine(  ConsoleWindowFullLine());
-                Console.WriteLine("Funktioner. Sammanställning");
-                Console.WriteLine(   ConsoleWindowFullLine());
-                foreach (POU f in allFuncs)
-                {
-                    Console.WriteLine("{0,-35}{1,-35}", f.fbName, f.projName);
-                }
-
+                printAllData();
             }
-            Console.WriteLine(ConsoleWindowFullLine());
-            Console.WriteLine("Färdig med uppgift");
-            Console.WriteLine( ConsoleWindowFullLine());
-            Console.ReadKey();
+
+            if (bCopy)
+            {
+                copyAllData(startfolder);
+            }
+        }
+
+        public static string BrowseFolder()
+        {
+            FolderBrowserDialog fbd = new FolderBrowserDialog();
+            string path = "";
+            if (fbd.ShowDialog() == DialogResult.OK)
+            {
+                path = fbd.SelectedPath;
+            }
+
+            return path;
         }
 
         public static void ReadXML(string path)
@@ -184,6 +222,7 @@ namespace FBReader
                             POU newP = new POU();
                             newP.fbName = el.Attribute("Name").Value;
                             newP.projName = proj;
+                            newP.fullpath = path;
                             Fb.Add(newP);
                             allFb.Add(newP);
                         }
@@ -208,6 +247,7 @@ namespace FBReader
                             POU newP = new POU();
                             newP.fbName = el.Attribute("Name").Value;
                             newP.projName = proj;
+                            newP.fullpath = path;
                             funcs.Add(newP);
                             allFuncs.Add(newP);
                         }
@@ -220,63 +260,137 @@ namespace FBReader
             }
         }
 
-            public static bool ReadTMC(string path, string POU)
+        public static bool ReadTMC(string path, string POU)
+        {
+            XDocument doc = XDocument.Load(path);
+            foreach (XElement el in doc.Root.Elements())
             {
-                XDocument doc = XDocument.Load(path);
-                foreach (XElement el in doc.Root.Elements())
+
+                //Console.WriteLine("{0}", el.Name);
+                foreach (XElement elem in el.Elements())
                 {
+                    //Console.WriteLine("{0}  {1}", elem.Name, elem.Value);
 
-                    //Console.WriteLine("{0}", el.Name);
-                    foreach (XElement elem in el.Elements())
+                    if (elem.Value.Contains(POU))
                     {
-                        //Console.WriteLine("{0}  {1}", elem.Name, elem.Value);
-
-                        if (elem.Value.Contains(POU))
-                        {
-                            return true;
-                        }
-
+                        return true;
                     }
 
                 }
 
-                return false;
             }
 
+            return false;
+        }
 
-
-            // Process all files in the directory passed in, recurse on any directories 
-            // that are found, and process the files they contain.
-            public static void ProcessDirectory(string targetDirectory)
+        public static void printProjectData()
+        {
+            Console.WriteLine(ConsoleWindowFullLine());
+            Console.WriteLine("Funktionsblock\t" + proj);
+            Console.WriteLine(ConsoleWindowFullLine());
+            foreach (POU fb in Fb)
             {
-                // Process the list of files found in the directory.
-                string[] fileEntries = Directory.GetFiles(targetDirectory);
-                foreach (string fileName in fileEntries)
-                    ProcessFile(fileName);
-
-                // Recurse into subdirectories of this directory.
-                string[] subdirectoryEntries = Directory.GetDirectories(targetDirectory);
-                foreach (string subdirectory in subdirectoryEntries)
-                    ProcessDirectory(subdirectory);
-            }
-
-            // Insert logic for processing found files here.
-            public static void ProcessFile(string path)
-            {
-
-
-                string ext = Path.GetExtension(path);
-
-                if (ext == ".TcPOU")
+                string use = "";
+                if (fb.uses > 0)
                 {
-                    filer.Add(path);
+                    use = "Används";
+                }
+                else
+                {
+                    use = "EJ använd";
                 }
 
-                if (ext == ".tmc")
-                {
-                    tmc.Add(path);
-                }
+                
+                Console.WriteLine("{0,-35}{1,-35}{2,-10}", fb.fbName, fb.projName, use);
             }
+            Console.WriteLine(ConsoleWindowFullLine());
+            Console.WriteLine("Funktioner\t" + proj);
+            Console.WriteLine(ConsoleWindowFullLine());
+            foreach (POU f in funcs)
+            {
+                string use = "";
+                if (f.uses > 0)
+                {
+                    use = "Används";
+                }
+                else
+                {
+                    use = "EJ använd";
+                }
+                Console.WriteLine("{0,-35}{1,-35}{2,-10}", f.fbName, f.projName, use);
+            }
+        }
+
+        public static void printAllData()
+        {
+            Console.WriteLine(ConsoleWindowFullLine());
+            Console.WriteLine("Summering av FB/Funktioner i vald mapp");
+            Console.WriteLine(ConsoleWindowFullLine());
+            foreach (POU fb in allFb)
+            {
+                Console.WriteLine("{0,-35}{1,-35}", fb.fbName, fb.projName);
+            }
+            Console.WriteLine(ConsoleWindowFullLine());
+            Console.WriteLine("Funktioner. Sammanställning");
+            Console.WriteLine(ConsoleWindowFullLine());
+            foreach (POU f in allFuncs)
+            {
+                Console.WriteLine("{0,-35}{1,-35}", f.fbName, f.projName);
+            }
+        }
+
+        public static void copyAllData(string startfolder)
+        {
+            string newPath = startfolder + "\\FB-Funks-" + DateTime.Now.ToString("yyyyMMdd");
+            Directory.CreateDirectory(newPath);
+
+            foreach (POU fb in allFb)
+            {
+                System.IO.File.Copy(fb.fullpath, newPath +"\\"+ Path.GetFileName(fb.fullpath), true);
+            }
+
+            foreach (POU f in allFuncs)
+            {
+                System.IO.File.Copy(f.fullpath, newPath +"\\"+ Path.GetFileName(f.fullpath), true);
+            }
+
+            Console.WriteLine(ConsoleWindowFullLine());
+            Console.WriteLine("{0} antal FB & {1} antal funktioner kopierade till {2}", allFb.Count(), allFuncs.Count(), newPath);
+            Console.WriteLine(ConsoleWindowFullLine());
+
+        }
+        // Process all files in the directory passed in, recurse on any directories 
+        // that are found, and process the files they contain.
+        public static void ProcessDirectory(string targetDirectory)
+        {
+            // Process the list of files found in the directory.
+            string[] fileEntries = Directory.GetFiles(targetDirectory);
+            foreach (string fileName in fileEntries)
+                ProcessFile(fileName);
+
+            // Recurse into subdirectories of this directory.
+            string[] subdirectoryEntries = Directory.GetDirectories(targetDirectory);
+            foreach (string subdirectory in subdirectoryEntries)
+                ProcessDirectory(subdirectory);
+        }
+
+        // Insert logic for processing found files here.
+        public static void ProcessFile(string path)
+        {
+
+
+            string ext = Path.GetExtension(path);
+
+            if (ext == ".TcPOU")
+            {
+                filer.Add(path);
+            }
+
+            if (ext == ".tmc")
+            {
+                tmc.Add(path);
+            }
+        }
 
 
         /// <summary>
